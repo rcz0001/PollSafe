@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title></title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="//code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+        <script src="crypto-js/crypto-js.js"></script>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script>
+            window.WebSocket = window.WebSocket || window.MozWebSocket;
+            var con = new WebSocket('ws://127.0.0.1:1337');
+            var username = location.href.substring(location.href.indexOf("?")+1).split('=')[1];
+            var sessionid = window.localStorage.getItem("PollSafeSessionID");
+            var region;
+            var candidate;
+            function onSignOut() {
+                con.send("signOut~" + JSON.stringify({"username":username, "sessionid":sessionid}));
+                window.location.href = 'index.html';
+            }
+            function onSelect0(name) {
+                candidate = "Donald Trump";
+                var unencrypted = "";
+                var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                for (var j = 0; j < candidate.length; j++) {
+                    unencrypted += possible.charAt(Math.floor(Math.random() * possible.length));
+                    unencrypted += candidate.substring(j, j + 1);
+                }
+                var key = "";
+                for (var j = 0; j < 8; j++) {
+                    key += possible.charAt(Math.floor(Math.random() * possible.length));
+                }
+                var encrypted = CryptoJS.AES.encrypt(unencrypted, key);
+                con.send("addPending~" + JSON.stringify({"username":username, "sessionid":sessionid}) + "~" + region + "~" + key + "~" + encrypted);
+            }
+            function onSelect1(name) {
+                candidate = "Kanye West";
+                var unencrypted = "";
+                var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                for (var j = 0; j < candidate.length; j++) {
+                    unencrypted += possible.charAt(Math.floor(Math.random() * possible.length));
+                    unencrypted += candidate.substring(j, j + 1);
+                }
+                var key = "";
+                for (var j = 0; j < 8; j++) {
+                    key += possible.charAt(Math.floor(Math.random() * possible.length));
+                }
+                var encrypted = CryptoJS.AES.encrypt(unencrypted, key);
+                con.send("addPending~" + JSON.stringify({"username":username, "sessionid":sessionid}) + "~" + region + "~" + key + "~" + encrypted);
+            }
+            $(document).ready(function() {
+                $("#welcome").text("Welcome, " + username + "! Please take a moment to answer the poll below.");
+            });
+            con.onopen = function () {
+                con.send("getPoll~" + JSON.stringify({"username":username, "sessionid":sessionid}));
+                con.send("getRegion~" + JSON.stringify({"username":username, "sessionid":sessionid}));
+                con.send("getCandidates~" + JSON.stringify({"username":username, "sessionid":sessionid}));
+            };
+            con.onmessage = function(message) {
+                var data = message.data.split('~');
+                if (data[0] === 'info') {
+                    $("#question").text(data[1]);
+                }
+                if (data[0] === 'region') {
+                    region = data[1];
+                }
+                else if (data[0] === 'candidates') {
+                    var candidates = JSON.parse(data[1]);
+                    var choices = "";
+                    for (var i = 0; i < candidates.length; i++) {
+                        candidate = candidates[i].name;
+                        choices += "<div class=\"choice\" onclick=\"onSelect"+i+"()\">" + candidates[i].name + "</div><br>"
+                    }
+                    $("#poll-container").html(choices);
+                }
+            };
+        </script>
+        <style>
+            body {
+                background-color: #c9c9c9;
+                font-family: "Calibri";
+                text-align: center;
+            }
+            #menu {
+                position: fixed;
+                top: 0px;
+                left: 0px;
+                width: 100%;
+                height: 75px;
+                background-color: white;
+                box-shadow: 0px 0px 5px grey;
+            }
+            #logout-button {
+                position: fixed;
+                top: 15px;
+                right: 25px;
+                font-size: 35px;
+                color: #5e5e5e;
+                cursor: pointer;
+            }
+            #logout-button:hover {
+                color: #333333;
+            }
+            #logo {
+                position: fixed;
+                top: 10px;
+                left: 20px;
+                width: 100px;
+                height: 55px;
+            }
+            #welcome {
+                position: relative;
+                top: 100px;
+                font-size: 25px;
+            }
+            #poll {
+                position: relative;
+                top: 150px;
+                width: 600px;
+                margin: 0 auto;
+                background-color: white;
+                box-shadow: 0px 0px 5px grey;
+                text-align: left;
+            }
+            #question {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                margin-bottom: 100px;
+                font-size: 30px;
+            }
+            .choice {
+                padding-left: 20px;
+                padding-top: 15px;
+                font-size: 25px;
+                background-color: #efefef;
+                height: 50px;
+                cursor: pointer;
+            }
+            .choice:hover {
+                background-color: #cccccc;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="menu">
+            <div id="logout-button" onclick="onSignOut()">Sign out</div>
+            <img id="logo" src="logo2.png" alt="PollSafe">
+            <div id="welcome"></div>
+        </div><br>
+        <div id="poll">
+            <div id="question"></div><br><br><br><br><br>
+            <div id="poll-container"></div>
+        </div>
+    </body>
+</html>

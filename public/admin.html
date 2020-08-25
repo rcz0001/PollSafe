@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Admin dashboard - PollSafe</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="//code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+        <script src="crypto-js/crypto-js.js"></script>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script>
+            window.WebSocket = window.WebSocket || window.MozWebSocket;
+            var con = new WebSocket('ws://127.0.0.1:1337');
+            var username = location.href.substring(location.href.indexOf("?")+1).split('=')[1];
+            var sessionid = window.localStorage.getItem("PollSafeSessionID");
+            var candidates;
+            var key;
+            var encrypted;
+            $(document).ready(function() {
+                $("#welcome").text("Welcome back, " + username + "!");
+            });
+            function onSignOut() {
+                con.send("signOut~" + JSON.stringify({"username":username, "sessionid":sessionid}));
+                window.location.href = 'index.html';
+            }
+            function decryptEntry() {
+                var bytes = CryptoJS.AES.decrypt(encrypted.toString(), key);
+                var decrypted = bytes.toString(CryptoJS.enc.Utf8).split('');
+                var decrypted2 = "";
+                for (var i = 1; i < decrypted.length; i += 2) {
+                    decrypted2 += decrypted[i];
+                }
+                for (var i = 0; i < candidates.length; i++) {
+                    if (candidates[i].name === decrypted2)
+                        con.send("cashIn~" + JSON.stringify({"username":username, "sessionid":sessionid}) + "~" + candidates[i].name);
+                }
+                con.send("removePendingAdmin~" + JSON.stringify({"username":username, "sessionid":sessionid}) + "~" + key + "~" + encrypted);
+                con.send("getPendingAdmin~" + JSON.stringify({"username":username, "sessionid":sessionid}));
+            }
+            function addAccount() {
+                var tempUsername = $("#username").val();
+                var tempPassword = $("#password").val();
+                con.send("addAccountAdmin~" + JSON.stringify({"username":username, "sessionid":sessionid}) + "~" + JSON.stringify({"username":tempUsername, "password":tempPassword}));
+            }
+            con.onopen = function () {
+                con.send("getPoll~" + JSON.stringify({"username":username, "sessionid":sessionid}));
+                con.send("getRegion~" + JSON.stringify({"username":username, "sessionid":sessionid}));
+                con.send("getCandidates~" + JSON.stringify({"username":username, "sessionid":sessionid}));
+                con.send("getPendingAdmin~" + JSON.stringify({"username":username, "sessionid":sessionid}));
+            };
+            con.onmessage = function(message) {
+                var data = message.data.split('~');
+                if (data[0] === 'info')
+                    $("#description").text("Poll: " + data[1]);
+                if (data[0] === 'region') {
+                    var region = data[1].split("___");
+                    var locale = region[1].replace("_", " ");
+                    var country = region[0].replace("_", " ");
+                    $("#region").text("Region: " + locale + ", " + country);
+                }
+                else if (data[0] === 'candidates') {
+                    candidates = JSON.parse(data[1]);
+                    var summary = "";
+                    for (var i = 0; i < candidates.length; i++) {
+                        summary += "Entry: \"" + candidates[i].name + "\" has " + candidates[i].votes + " votes.<br>"
+                    }
+                    $("#stats").html(summary);
+                }
+                else if (data[0] === 'pending') {
+                    if (data[1] !== null) {
+                        key = data[1].substring(0, 8);
+                        encrypted = data[1].substring(8);
+                        $("#captcha").text(key);
+                    }
+                    else  {
+                        $("#captcha").hide();
+                    }
+                }
+            };
+        </script>
+        <style>
+            body {
+                background-color: #c9c9c9;
+                font-family: "Calibri";
+                text-align: center;
+            }
+            #menu {
+                position: fixed;
+                top: 0px;
+                left: 0px;
+                width: 100%;
+                height: 75px;
+                background-color: white;
+                box-shadow: 0px 0px 5px grey;
+            }
+            #logout-button {
+                position: fixed;
+                top: 15px;
+                right: 25px;
+                font-size: 35px;
+                color: #5e5e5e;
+                cursor: pointer;
+            }
+            #logout-button:hover {
+                color: #333333;
+            }
+            #logo {
+                position: fixed;
+                top: 10px;
+                left: 20px;
+                width: 100px;
+                height: 55px;
+            }
+            #welcome {
+                position: relative;
+                top: 100px;
+                font-size: 35px;
+            }
+            #description {
+                position: relative;
+                top: 150px;
+                font-size: 25px;
+            }
+            #region {
+                position: relative;
+                top: 150px;
+                font-size: 20px;
+            }
+            #stats {
+                position: relative;
+                top: 170px;
+                font-size: 20px;
+            }
+            #tools {
+                position: relative;
+                top: 180px;
+                width: 1000px;
+                height: 400px;
+                margin: 0 auto;
+                background-color: white;
+                box-shadow: 0px 0px 5px grey;
+                text-align: left;
+            }
+            #add-account {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                width: 470px;
+                height: 360px;
+                background-color: #efefef;
+                text-align: center;
+            }
+            #handle-pending {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                width: 470px;
+                height: 360px;
+                background-color: #efefef;
+                text-align: center;
+            }
+            #add-header {
+                position: relative;
+                top: 20px;
+                font-size: 20px;
+            }
+            #pending-header {
+                position: relative;
+                top: 20px;
+                font-size: 20px;
+            }
+            #captcha {
+                background-image: url("static.png");
+                position: absolute;
+                top: 60px;
+                left: 0px;
+                width: 100%;
+                height: 200px;
+                font-family: "Times New Roman";
+                font-size: 40px;
+            }
+            .login-input {
+                margin-top: 300px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="welcome"></div>
+        <div id="description"></div>
+        <div id="region"></div>
+        <div id="stats"></div>
+        <div id="tools">
+            <div id="add-account">
+                <div id="add-header">Add account</div>
+                <input id="username" class="login-input" type="text" name="username" placeholder="Username">
+                <input id="password" class="login-input" type="text" name="password" placeholder="Password">
+                <button id="add-submit" onclick="addAccount()">Confirm</button>
+            </div>
+            <div id="handle-pending">
+                <div id="pending-header">Please enter the CAPTCHA.</div>
+                <div id="captcha"></div>
+                <input id="key" class="login-input" type="text" name="key" placeholder="Key">
+                <button id="decrypt-submit" onclick="decryptEntry()">Submit</button>
+            </div>
+        </div>
+        <div id="menu">
+            <div id="logout-button" onclick="onSignOut()">Sign out</div>
+            <img id="logo" src="logo2.png" alt="PollSafe">
+        </div>
+    </body>
+</html>

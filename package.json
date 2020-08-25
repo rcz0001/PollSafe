@@ -1,0 +1,19 @@
+{
+    "name": "Poll",
+    "version": "1.0.0",
+    "scripts": {
+        "start": "node server",
+        "edit": "node edit",
+        "edit2": "node edit2",
+        "edit3": "node edit3"
+    },
+    "contributors": [],
+    "dependencies": {
+        "formidable": "1.2.1",
+        "fs": "0.0.1-security",
+        "crypto-js": "3.1.9-1",
+        "mysql": "2.15.0",
+        "express": "4.16.3",
+        "websocket": "1.0.25"
+    }
+}
